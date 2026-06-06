@@ -25,9 +25,9 @@ DEFAULT_SETTINGS = {
 }
 
 # ── жесты ─────────────────────────────────────────────────────────────────────
-FIST_THRESHOLD = 0.04       # fingertip→MCP дистанция для кулака (norm.)
+PALM_FIST_THRESHOLD = 0.08       # fingertip→MCP дистанция для кулака (norm.)
 FIST_SCROLL_SENS = 300.0    # множитель движения кулака → скролл
-ZOOM_SENSITIVITY = 120.0    # множитель расстояния между руками → зум
+ZOOM_SENSITIVITY = 300.0    # множитель расстояния между руками → зум
 
 
 def _load_settings() -> dict:
