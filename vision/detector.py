@@ -50,6 +50,9 @@ def _mode_tilt(detector, frame, lm, s):
         detector._neutral_angle = angle
         detector._neutral_hlen = hlen
         detector._calibrated = True
+        if detector._sx is None:
+            detector._sx = 0.0
+            detector._sy = 0.0
         return 0, 0
 
     dev_a = angle - detector._neutral_angle
@@ -61,6 +64,9 @@ def _mode_tilt(detector, frame, lm, s):
     if abs(dev_l) < dz:
         dev_l = 0.0
 
+    if detector._sx is None:
+        detector._sx = 0.0
+        detector._sy = 0.0
     sm = s.get("smooth", 0.3)
     detector._sx += sm * (dev_a * s.get("sensitivity_x", 2.0) - detector._sx)
     detector._sy += sm * (dev_l * s.get("sensitivity_y", 1.5) - detector._sy)
@@ -83,6 +89,9 @@ def _mode_tilt_vector(detector, frame, lm, s):
     nx, ny = vx / length, vy / length
 
     # сглаживание
+    if detector._sx is None:
+        detector._sx = 0.0
+        detector._sy = 0.0
     sm = s.get("smooth", 0.3)
     detector._sx += sm * (nx - detector._sx)
     detector._sy += sm * (ny - detector._sy)
@@ -212,10 +221,21 @@ class HandDetector:
         self._neutral_hlen: float = 0.0
         self._sx: float | None = None
         self._sy: float | None = None
+        self._current_mode: str | None = None
 
     def detect(self, frame):
         """(x, y, button) — дельта курсора -127..127 и флаг клика."""
         s = _load_settings()
+        mode = s.get("mode", "tilt")
+
+        # ── сброс состояния при смене режима ──
+        if mode != self._current_mode:
+            self._current_mode = mode
+            self._calibrated = False
+            self._neutral_angle = 0.0
+            self._neutral_hlen = 0.0
+            self._sx = None
+            self._sy = None
 
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         mp_img = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
@@ -230,7 +250,7 @@ class HandDetector:
         lm = result.hand_landmarks[0]
 
         # выбираем режим
-        mode_fn = MODES.get(s.get("mode", "tilt"), _mode_tilt)
+        mode_fn = MODES.get(mode, _mode_tilt)
         x, y = mode_fn(self, frame, lm, s)
 
         # пинч

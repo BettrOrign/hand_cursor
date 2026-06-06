@@ -1,10 +1,10 @@
 {
-  "mode": "tilt-vector",
-  "sensitivity_x": 2.0,
-  "sensitivity_y": 1.5,
-  "smooth": 0.3,
-  "dead_zone": 0.03,
+  "mode": "delta",
+  "sensitivity_x": 3.1879999999999997,
+  "sensitivity_y": 3.07,
+  "smooth": 0.14159999999999995,
+  "dead_zone": 0.078,
   "confidence": 0.7,
-  "edge_boost": 10.0,
+  "edge_boost": 1.0,
   "pinch_threshold": 0.05
 }
