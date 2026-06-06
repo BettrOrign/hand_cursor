@@ -1,0 +1,10 @@
+{
+  "mode": "tilt",
+  "sensitivity_x": 2.0,
+  "sensitivity_y": 1.5,
+  "smooth": 0.3,
+  "dead_zone": 0.03,
+  "confidence": 0.7,
+  "edge_boost": 10.0,
+  "pinch_threshold": 0.05
+}
