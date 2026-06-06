@@ -131,7 +131,7 @@ def _mode_delta(detector, frame, lm, s):
     dx = (detector._sx - prev_x) * 0.8
     dy = (detector._sy - prev_y) * 0.8
 
-    dz = s.get("dead_zone", 0.03) * w
+    dz = 2.0  # мёртвая зона в пикселях для дельты
     if abs(dx) < dz:
         dx = 0.0
     if abs(dy) < dz:

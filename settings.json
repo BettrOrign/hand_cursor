@@ -1,10 +1,10 @@
 {
   "mode": "delta",
-  "sensitivity_x": 3.1879999999999997,
-  "sensitivity_y": 3.07,
-  "smooth": 0.14159999999999995,
-  "dead_zone": 0.078,
+  "sensitivity_x": 1.5,
+  "sensitivity_y": 1.0,
+  "smooth": 0.2,
+  "dead_zone": 0.03,
   "confidence": 0.7,
-  "edge_boost": 1.0,
+  "edge_boost": 0.0,
   "pinch_threshold": 0.05
 }
