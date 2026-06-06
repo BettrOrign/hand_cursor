@@ -8,8 +8,8 @@ use std::io::{self, BufRead};
 
 // ─── Конфигурация ────────────────────────────────────────────────────────────
 
-const DEAD_ZONE: f32 = 0.5;      // минимальная дельта (рука стоит → не двигаем)
-const SENSITIVITY: f32 = 1.0;    // множитель скорости (1.0 = как есть из Python)
+const DEAD_ZONE: f32 = 0.5;
+const SENSITIVITY: f32 = 1.0;
 
 // ─── Формат команды из Python ────────────────────────────────────────────────
 
@@ -19,16 +19,18 @@ struct Command {
     y: i32,
     button: bool,
     #[serde(default)]
+    ctrl: bool,
+    #[serde(default)]
     scroll: i32,
     #[serde(default)]
     hscroll: i32,
 }
 
-// ─── Виртуальная мышь ────────────────────────────────────────────────────────
+// ─── Виртуальные устройства ──────────────────────────────────────────────────
 
-fn build_virtual_mouse() -> Result<evdev::uinput::VirtualDevice, Box<dyn std::error::Error>> {
+fn build_mouse() -> Result<evdev::uinput::VirtualDevice, Box<dyn std::error::Error>> {
     let device = VirtualDeviceBuilder::new()?
-        .name("open-tracker-virtual-mouse")
+        .name("open-tracker-mouse")
         .with_relative_axes(&{
             let mut axes = evdev::AttributeSet::new();
             axes.insert(RelativeAxisType::REL_X);
@@ -43,17 +45,30 @@ fn build_virtual_mouse() -> Result<evdev::uinput::VirtualDevice, Box<dyn std::er
             keys
         })?
         .build()?;
+    Ok(device)
+}
 
+fn build_keyboard() -> Result<evdev::uinput::VirtualDevice, Box<dyn std::error::Error>> {
+    let device = VirtualDeviceBuilder::new()?
+        .name("open-tracker-keyboard")
+        .with_keys(&{
+            let mut keys = evdev::AttributeSet::new();
+            keys.insert(Key::KEY_LEFTCTRL);
+            keys
+        })?
+        .build()?;
     Ok(device)
 }
 
 // ─── Главный цикл ────────────────────────────────────────────────────────────
 
 fn run() -> Result<(), Box<dyn std::error::Error>> {
-    let mut device = build_virtual_mouse()?;
+    let mut mouse = build_mouse()?;
+    let mut kbd = build_keyboard()?;
     let mut btn_pressed = false;
+    let mut ctrl_pressed = false;
 
-    eprintln!("🖱️  виртуальная мышь создана, жду команды...");
+    eprintln!("🖱️  устройства созданы, жду команды...");
 
     let stdin = io::stdin();
     for line in stdin.lock().lines() {
@@ -69,6 +84,15 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
                 continue;
             }
         };
+
+        // ── ctrl (виртуальная клавиатура, для зума) ──
+        if cmd.ctrl != ctrl_pressed {
+            let val = if cmd.ctrl { 1 } else { 0 };
+            let ev = InputEvent::new(EventType::KEY, Key::KEY_LEFTCTRL.0, val);
+            let ev_syn = InputEvent::new(EventType::SYNCHRONIZATION, Synchronization::SYN_REPORT.0, 0);
+            kbd.emit(&[ev, ev_syn])?;
+            ctrl_pressed = cmd.ctrl;
+        }
 
         // ── движение курсора ──
         let dx = if (cmd.x as f32).abs() < DEAD_ZONE {
@@ -86,7 +110,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
             let ev_x = InputEvent::new(EventType::RELATIVE, RelativeAxisType::REL_X.0, dx);
             let ev_y = InputEvent::new(EventType::RELATIVE, RelativeAxisType::REL_Y.0, dy);
             let ev_syn = InputEvent::new(EventType::SYNCHRONIZATION, Synchronization::SYN_REPORT.0, 0);
-            device.emit(&[ev_x, ev_y, ev_syn])?;
+            mouse.emit(&[ev_x, ev_y, ev_syn])?;
         }
 
         // ── клик ──
@@ -95,23 +119,28 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
             let val = if new_btn { 1 } else { 0 };
             let ev_btn = InputEvent::new(EventType::KEY, Key::BTN_LEFT.0, val);
             let ev_syn = InputEvent::new(EventType::SYNCHRONIZATION, Synchronization::SYN_REPORT.0, 0);
-            device.emit(&[ev_btn, ev_syn])?;
+            mouse.emit(&[ev_btn, ev_syn])?;
             btn_pressed = new_btn;
         }
 
-        // ── скролл ──
+        // ── скролл (или зум — если зажат ctrl) ──
         if cmd.scroll != 0 || cmd.hscroll != 0 {
             let ev_scroll = InputEvent::new(EventType::RELATIVE, RelativeAxisType::REL_WHEEL.0, cmd.scroll);
             let ev_hscroll = InputEvent::new(EventType::RELATIVE, RelativeAxisType::REL_HWHEEL.0, cmd.hscroll);
             let ev_syn = InputEvent::new(EventType::SYNCHRONIZATION, Synchronization::SYN_REPORT.0, 0);
-            device.emit(&[ev_scroll, ev_hscroll, ev_syn])?;
+            mouse.emit(&[ev_scroll, ev_hscroll, ev_syn])?;
         }
+    }
+
+    // отпускаем ctrl при выходе
+    if ctrl_pressed {
+        let ev = InputEvent::new(EventType::KEY, Key::KEY_LEFTCTRL.0, 0);
+        let ev_syn = InputEvent::new(EventType::SYNCHRONIZATION, Synchronization::SYN_REPORT.0, 0);
+        kbd.emit(&[ev, ev_syn])?;
     }
 
     Ok(())
 }
-
-// ─── Точка входа ─────────────────────────────────────────────────────────────
 
 fn main() {
     if let Err(e) = run() {

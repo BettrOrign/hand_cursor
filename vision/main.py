@@ -17,11 +17,12 @@ def main():
             if frame is None:
                 break
 
-            x, y, btn, scroll, hscroll = detector.detect(frame)
+            x, y, btn, scroll, hscroll, ctrl = detector.detect(frame)
             cmd = {
                 "x": x,
                 "y": y,
                 "button": btn,
+                "ctrl": ctrl,
                 "scroll": scroll,
                 "hscroll": hscroll,
             }

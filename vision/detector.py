@@ -25,7 +25,7 @@ DEFAULT_SETTINGS = {
 }
 
 # ── жесты ─────────────────────────────────────────────────────────────────────
-SCROLL_PINCH_THRESHOLD = 0.06   # макс дистанция thumb+middle для скролла
+SCROLL_PINCH_THRESHOLD = 0.10   # макс дистанция thumb+middle для скролла
 SCROLL_SENSITIVITY = 4.0        # множитель движения для скролла
 ZOOM_SENSITIVITY = 120.0        # множитель изменения дистанции для зума
 ZOOM_DEAD_ZONE = 0.003          # мин изменение дистанции для зума (норм.)
@@ -217,7 +217,7 @@ class HandDetector:
     # ── detect ─────────────────────────────────────────────────────────────────
 
     def detect(self, frame):
-        """(x, y, button, scroll, hscroll) — всё в -127..127."""
+        """(x, y, button, scroll, hscroll, ctrl) — всё в -127..127."""
         s = _load_settings()
         mode = s.get("mode", "delta")
 
@@ -241,7 +241,7 @@ class HandDetector:
             self._sx = None
             self._scroll_active = False
             self._zoom_dist = None
-            return 0, 0, False, 0, 0
+            return 0, 0, False, 0, 0, False
 
         # ── зум (две руки) ─────────────────────────────────────────────────
         if len(result.hand_landmarks) >= 2:
@@ -258,7 +258,7 @@ class HandDetector:
                     scroll = max(-20, min(20, int(delta)))
             self._zoom_dist = dist
             self._scroll_active = False
-            return 0, 0, False, scroll, 0
+            return 0, 0, False, scroll, 0, True
 
         # ── одна рука — курсор + клик + скролл ─────────────────────────────
         self._zoom_dist = None
@@ -287,16 +287,22 @@ class HandDetector:
                     hscroll = 0
                 if abs(scroll) < 1:
                     scroll = 0
+                # если скролл в обе стороны — оставляем только бóльшую
+                if hscroll != 0 and scroll != 0:
+                    if abs(hscroll) > abs(scroll):
+                        scroll = 0
+                    else:
+                        hscroll = 0
             else:
                 self._scroll_active = True
 
             self._scroll_mid_x = mid_x
             self._scroll_mid_y = mid_y
-            return 0, 0, False, scroll, hscroll
+            return 0, 0, False, scroll, hscroll, False
 
         self._scroll_active = False
 
         # ── обычный режим — курсор ─────────────────────────────────────────
         mode_fn = MODES.get(mode, _mode_delta)
         x, y = mode_fn(self, frame, lm, s)
-        return x, y, button, 0, 0
+        return x, y, button, 0, 0, False
