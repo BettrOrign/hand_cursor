@@ -17,8 +17,14 @@ def main():
             if frame is None:
                 break
 
-            x, y, btn = detector.detect(frame)
-            cmd = {"x": x, "y": y, "button": btn}
+            x, y, btn, scroll, hscroll = detector.detect(frame)
+            cmd = {
+                "x": x,
+                "y": y,
+                "button": btn,
+                "scroll": scroll,
+                "hscroll": hscroll,
+            }
             print(json.dumps(cmd), flush=True)
 
     except KeyboardInterrupt:

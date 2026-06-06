@@ -18,6 +18,10 @@ struct Command {
     x: i32,
     y: i32,
     button: bool,
+    #[serde(default)]
+    scroll: i32,
+    #[serde(default)]
+    hscroll: i32,
 }
 
 // ─── Виртуальная мышь ────────────────────────────────────────────────────────
@@ -29,6 +33,8 @@ fn build_virtual_mouse() -> Result<evdev::uinput::VirtualDevice, Box<dyn std::er
             let mut axes = evdev::AttributeSet::new();
             axes.insert(RelativeAxisType::REL_X);
             axes.insert(RelativeAxisType::REL_Y);
+            axes.insert(RelativeAxisType::REL_WHEEL);
+            axes.insert(RelativeAxisType::REL_HWHEEL);
             axes
         })?
         .with_keys(&{
@@ -64,7 +70,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
             }
         };
 
-        // ── мёртвая зона на дельту ──
+        // ── движение курсора ──
         let dx = if (cmd.x as f32).abs() < DEAD_ZONE {
             0
         } else {
@@ -76,7 +82,6 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
             (cmd.y as f32 * SENSITIVITY) as i32
         };
 
-        // ── движение ──
         if dx != 0 || dy != 0 {
             let ev_x = InputEvent::new(EventType::RELATIVE, RelativeAxisType::REL_X.0, dx);
             let ev_y = InputEvent::new(EventType::RELATIVE, RelativeAxisType::REL_Y.0, dy);
@@ -92,6 +97,14 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
             let ev_syn = InputEvent::new(EventType::SYNCHRONIZATION, Synchronization::SYN_REPORT.0, 0);
             device.emit(&[ev_btn, ev_syn])?;
             btn_pressed = new_btn;
+        }
+
+        // ── скролл ──
+        if cmd.scroll != 0 || cmd.hscroll != 0 {
+            let ev_scroll = InputEvent::new(EventType::RELATIVE, RelativeAxisType::REL_WHEEL.0, cmd.scroll);
+            let ev_hscroll = InputEvent::new(EventType::RELATIVE, RelativeAxisType::REL_HWHEEL.0, cmd.hscroll);
+            let ev_syn = InputEvent::new(EventType::SYNCHRONIZATION, Synchronization::SYN_REPORT.0, 0);
+            device.emit(&[ev_scroll, ev_hscroll, ev_syn])?;
         }
     }
 
