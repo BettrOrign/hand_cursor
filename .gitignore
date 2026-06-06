@@ -1,0 +1,14 @@
+# Rust
+target/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Model (download separately)
+hand_landmarker.task
+
+# OS
+.DS_Store
+Thumbs.db
