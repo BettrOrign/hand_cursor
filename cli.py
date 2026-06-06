@@ -121,7 +121,15 @@ class TerminalInput:
         if self._is_tty:
             try:
                 self._old = termios.tcgetattr(self._fd)
-                tty.setraw(self._fd)
+                mode = termios.tcgetattr(self._fd)
+                # ── input: raw (no line buffer, no echo, no signals) ──
+                mode[tty.IFLAG] &= ~(termios.BRKINT | termios.ICRNL | termios.INPCK | termios.ISTRIP | termios.IXON)
+                mode[tty.LFLAG] &= ~(termios.ECHO | termios.ICANON | termios.IEXTEN | termios.ISIG)
+                mode[tty.CC][termios.VMIN] = 1
+                mode[tty.CC][termios.VTIME] = 0
+                # ── output: keep OPOST (Rich needs \n → \r\n) ──
+                # ── cflags: keep default ──
+                termios.tcsetattr(self._fd, termios.TCSADRAIN, mode)
             except termios.error:
                 self._is_tty = False
         return self
