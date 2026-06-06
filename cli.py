@@ -267,8 +267,7 @@ def make_dashboard(settings: dict, data: dict | None, selected: int) -> Layout:
     layout["header"].update(Panel(title, style="bold"))
 
     # ── body ──────────────────────────────────────────────────────────────────
-    body = Layout()
-    body.split_row(
+    layout["body"].split_row(
         Layout(name="left", ratio=2),
         Layout(name="right", ratio=3),
     )
