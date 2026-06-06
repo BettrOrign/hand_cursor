@@ -25,7 +25,7 @@ DEFAULT_SETTINGS = {
 }
 
 # ── жесты ─────────────────────────────────────────────────────────────────────
-FIST_THRESHOLD = 0.06       # fingertip→MCP дистанция для кулака (norm.)
+FIST_THRESHOLD = 0.04       # fingertip→MCP дистанция для кулака (norm.)
 FIST_SCROLL_SENS = 300.0    # множитель движения кулака → скролл
 ZOOM_SENSITIVITY = 120.0    # множитель расстояния между руками → зум
 
@@ -189,11 +189,12 @@ class HandDetector:
 
     @staticmethod
     def _is_fist(lm) -> bool:
-        """Кулак: минимум 4 из 5 пальцев прижаты (fingertip → MCP)."""
-        pairs = [(4, 2), (8, 5), (12, 9), (16, 13), (20, 17)]
+        """Кулак: 4+ кончиков пальцев близки к центру ладони."""
+        cx = (lm[5].x + lm[9].x + lm[13].x + lm[17].x) / 4
+        cy = (lm[5].y + lm[9].y + lm[13].y + lm[17].y) / 4
         curled = sum(
-            1 for tip, mcp in pairs
-            if math.hypot(lm[tip].x - lm[mcp].x, lm[tip].y - lm[mcp].y) < FIST_THRESHOLD
+            1 for tip_idx in [4, 8, 12, 16, 20]
+            if math.hypot(lm[tip_idx].x - cx, lm[tip_idx].y - cy) < PALM_FIST_THRESHOLD
         )
         return curled >= 4
 
