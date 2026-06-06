@@ -16,6 +16,7 @@ import json
 import os
 import select
 import signal
+import time
 import subprocess
 import sys
 import termios
@@ -108,7 +109,7 @@ def clean_settings(s: dict) -> dict:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class TerminalInput:
-    """Читает клавиши по одной, без Enter."""
+    """Reads keys one at a time without requiring Enter."""
 
     def __init__(self):
         self._fd = sys.stdin.fileno()
@@ -132,21 +133,44 @@ class TerminalInput:
             except termios.error:
                 pass
 
+    # ── helpers ────────────────────────────────────────────────────────────────
+
+    def _read_buf(self) -> str | None:
+        """Extract one keypress from buffer, handling escape sequences."""
+        if not self._buf:
+            return None
+
+        ch = self._buf[0]
+
+        # Arrow keys: [A [B [C [D (3-byte sequences)
+        if ch == "" and len(self._buf) >= 3:
+            seq = self._buf[:3]
+            if seq[1] == "[" and seq[2] in ("A", "B", "C", "D"):
+                self._buf = self._buf[3:]
+                return seq
+
+        # Single character (including lone ESC)
+        self._buf = self._buf[1:]
+        return ch
+
+    # ── poll ───────────────────────────────────────────────────────────────────
+
     def poll(self) -> str | None:
+        """Return next keypress or None if nothing available."""
         if not self._is_tty:
             return None
-        while self._buf:
-            ch = self._buf[0]
-            self._buf = self._buf[1:]
-            return ch
+
+        # First drain any buffered data from previous reads
+        if self._buf:
+            return self._read_buf()
+
+        # Read fresh bytes from terminal (non-blocking)
         try:
             if select.select([sys.stdin], [], [], 0) == ([sys.stdin], [], []):
-                ch = os.read(self._fd, 8).decode("utf-8", errors="replace")
-                self._buf = ch
-                if self._buf:
-                    ch = self._buf[0]
-                    self._buf = self._buf[1:]
-                    return ch
+                raw = os.read(self._fd, 8).decode("utf-8", errors="replace")
+                if raw:
+                    self._buf = raw
+                    return self._read_buf()
         except (OSError, ValueError):
             pass
         return None
@@ -360,7 +384,6 @@ def make_dashboard(settings: dict, data: dict | None, selected: int) -> Layout:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 KEY_MODES = {
-    "\r": "enter",
     "\x1b[A": "up",
     "\x1b[B": "down",
     "\x1b[C": "right",
@@ -433,6 +456,7 @@ def run_dashboard(use_rust: bool = True):
 
                     # ── update ──
                     live.update(_make_layout())
+                    time.sleep(0.016)
 
     finally:
         pipe.stop()

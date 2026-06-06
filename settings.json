@@ -1,5 +1,5 @@
 {
-  "mode": "delta",
+  "mode": "tilt-vector",
   "sensitivity_x": 2.0,
   "sensitivity_y": 1.5,
   "smooth": 0.3,
